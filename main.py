@@ -1,32 +1,31 @@
 from src.data.fetch_data import fetch_stock_data
 from src.data.plot_data import plot_stock_data
 from src.data.feature_engineering import add_features
+from src.models.train_model import train_model
 
 def main():
     # Define parameters
     ticker = "AAPL"
-    start_date = "2022-01-01"
+    start_date = "2018-01-01"
     end_date = "2023-01-01"
 
-    # Step 1: Fetch data
+    # Step 1: Fetch and Process Data
     print("Fetching stock data...")
     data = fetch_stock_data(ticker, start_date, end_date)
     print("Data fetched successfully!")
-    print(data.head())
-    print(data.info())
 
-    # Step 2: Perform feature engineering
     print("Adding features to the data...")
     data = add_features(data, ticker)
     print("Features added successfully!")
-    print(data.head())
-    print(data.info())
 
-    # Step 3: Display the final data
-    print(data.head())
+    # Step 2: Train the Model
+    print("Training ML model...")
+    model, scaler = train_model(ticker, start_date, end_date)
+    print("Model training complete!")
 
-    # Plot the data
+    # Step 3: Plot Stock Data
     plot_stock_data(data, ticker)
+
 
 if __name__ == "__main__":
     main()

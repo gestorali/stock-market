@@ -34,12 +34,30 @@ def add_features(data, ticker):
     data[('EMA12', '')] = data[close_column].ewm(span=12, adjust=False).mean()
     data[('EMA26', '')] = data[close_column].ewm(span=26, adjust=False).mean()
 
+    # Moving Average onvergence Divergence(MACD)
+    # MACD > Signal Line → Buy Signal
+    # MACD < Signal Line → Sell Signal
+
+    data[('MACD', '')] = data[('EMA12', '')] - data[('EMA26', '')]
+    data[('Signal Line', '')] = data[('MACD', '')].ewm(span=9, adjust=False).mean()
+
+    # Bollinger Bands
+    # Price near Upper Band → Overbought (Sell Signal)
+    # Price near Lower Band → Oversold (Buy Signal)
+
+    data[('Middle Band', '')] = data[close_column].rolling(window=20).mean()
+    data[('Upper Band', '')] = data[('Middle Band', '')] + 2 * data[close_column].rolling(window=20).std()
+    data[('Lower Band', '')] = data[('Middle Band', '')] - 2 * data[close_column].rolling(window=20).std()
+
     # RSI
+    # RSI > 70 → Overbought (Sell Signal)
+    # RSI < 30 → Oversold (Buy Signal)
+
     def compute_rsi(data, close_column, window=14):
         delta = data[close_column].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
-        rs = gain / loss
+        gain = delta.where(delta > 0, 0).rolling(window=window).mean()
+        loss = -delta.where(delta < 0, 0).rolling(window=window).mean()
+        rs = gain / (loss + 1e-9)  # Avoid division by zero
         rsi = 100 - (100 / (1 + rs))
         return rsi
 
@@ -51,9 +69,15 @@ def add_features(data, ticker):
     # Volume-related features
     data[('Volume MA20', '')] = data[volume_column].rolling(window=20).mean()
 
+    # On-Balance Volume (OBV)
+    # Rising OBV → Positive momentum
+    # Falling OBV → Negative momentum
+
+    data[('OBV', '')] = (data[volume_column] * ((data[close_column].diff() > 0) * 2 - 1)).cumsum()
+
     # Print column names and a sample of data to check the presence of 'MA50'
-    print("Columns in the data:", data.columns)
-    print(data[[close_column, ('MA50', '')]].head(10))  # Check first few rows of Close and MA50
+    # print("Columns in the data:", data.columns)
+    # print(data[[close_column, ('MA50', '')]].head(10))  # Check first few rows of Close and MA50
 
     # Drop rows with NaN values in 'MA50'
     data = data.dropna(subset=[('MA50', '')])
