@@ -12,11 +12,11 @@ import requests
 # === CONFIG ===
 
 # mode = "fetch"  # Change to "process" to run processing phase
-mode = "fetch"       # Fetch and save original data
-# mode = "process"    # Load, translate, analyze
+# mode = "fetch"       # Fetch and save original data
+mode = "process"    # Load, translate, analyze
 ticker = "AAPL"
-start_date = "2024-01-01"
-end_date = "2024-12-31"
+start_date = "2025-06-01"
+end_date = "2025-07-04"
 RAW_FILE = "news_original_language.csv"
 CLEAN_FILE = "news_translated_cleaned.csv"
 lang_blacklist = {"zh-cn", "zh-tw", "ja", "ko", "ar", "ru"}
@@ -29,7 +29,7 @@ def detect_language(text):
     except LangDetectException:
         return "undetected"
 
-def is_mostly_non_latin(text, threshold=0.7):
+def is_mostly_non_latin(text, threshold=0.3):
     if not isinstance(text, str):
         return False
     non_latin_chars = re.findall(r"[^\x00-\x7F]", text)
@@ -50,16 +50,28 @@ def analyze_sentiment(text):
     scores = analyzer.polarity_scores(text)
     return scores['compound']
 
-def save_to_csv(articles, filename):
-    df = pd.DataFrame(articles)
+def save_to_csv(df_new, filename, start_date=None, end_date=None):
+    df_new = df_new.copy()
+
+    df_new["start_date"] = start_date
+    df_new["end_date"] = end_date
+
+    if "publishedAt" in df_new.columns:
+        df_new["publishedAt"] = pd.to_datetime(df_new["publishedAt"], errors="coerce")
+
     try:
-        existing_df = pd.read_csv(filename)
-        df = pd.concat([existing_df, df], ignore_index=True)
+        df_existing = pd.read_csv(filename, parse_dates=["publishedAt"])
+        combined_df = pd.concat([df_existing, df_new], ignore_index=True)
+        print(f"🔄 Appended {len(df_new)} rows to existing {len(df_existing)} rows")
     except FileNotFoundError:
-        pass
-    df.drop_duplicates(subset=["title", "publishedAt"], inplace=True)
-    df.to_csv(filename, index=False)
-    print(f"✅ Saved {len(df)} articles to '{filename}'")
+        combined_df = df_new
+        print(f"📄 File '{filename}' not found — creating new with {len(df_new)} rows")
+
+    combined_df.drop_duplicates(subset=["title", "publishedAt"], keep="last", inplace=True)
+    combined_df.sort_values(by="publishedAt", inplace=True)
+
+    combined_df.to_csv(filename, index=False)
+    print(f"✅ Saved {len(combined_df)} total rows to '{filename}', sorted by publishedAt.")
 
 def load_from_csv(filepath):
     try:
@@ -128,6 +140,8 @@ def process_and_filter_articles(df):
     df_clean['translated_text'] = df_clean['original_text'].apply(translate_text)
     df_clean['sentiment'] = df_clean['translated_text'].apply(analyze_sentiment)
 
+    df_clean = df_clean.sort_values(by="publishedAt")
+
     df_clean.to_csv(CLEAN_FILE, index=False)
     print(f"✅ Cleaned data saved to '{CLEAN_FILE}'")
 
@@ -150,7 +164,7 @@ def main():
             df = pd.DataFrame(articles)
             df["ticker"] = ticker
             df["fetch_date"] = pd.Timestamp.now().date()
-            save_to_csv(df, RAW_FILE)
+            save_to_csv(df, RAW_FILE, start_date=start_date, end_date=end_date)
         else:
             print("❌ No articles fetched.")
 
