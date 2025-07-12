@@ -1,4 +1,5 @@
-# Folder: src/data/fetch_prices.py
+# src/data/fetch_prices.py
+
 import os
 import requests
 import pandas as pd
@@ -14,8 +15,23 @@ def fetch_and_save_stock_data(ticker, start, end, filename="data/prices/stock_pr
 
     url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY_ADJUSTED&symbol={ticker}&outputsize=full&apikey={api_key}&datatype=csv"
 
+    print(f"🔗 Fetching URL:\n{url}")
     try:
-        df_new = pd.read_csv(url)
+        # Fetch raw content
+        response = requests.get(url)
+        response.raise_for_status()
+
+        # Try reading CSV
+        from io import StringIO
+        df_new = pd.read_csv(StringIO(response.text))
+
+        # Check if 'timestamp' column is present
+        if 'timestamp' not in df_new.columns:
+            print("❌ 'timestamp' column not found. Possible error message from API:")
+            print(df_new.head())
+            return
+
+        # Clean and filter
         df_new['timestamp'] = pd.to_datetime(df_new['timestamp'])
         df_new = df_new[(df_new['timestamp'] >= start) & (df_new['timestamp'] <= end)]
         df_new = df_new.rename(columns={'timestamp': 'Date', 'adjusted_close': 'Close'})
@@ -24,6 +40,7 @@ def fetch_and_save_stock_data(ticker, start, end, filename="data/prices/stock_pr
         df_new['end_date'] = end
         df_new['fetch_date'] = pd.Timestamp.now().date()
 
+        # Combine with existing data
         try:
             df_existing = pd.read_csv(filename)
             df_combined = pd.concat([df_existing, df_new], ignore_index=True)
@@ -31,6 +48,7 @@ def fetch_and_save_stock_data(ticker, start, end, filename="data/prices/stock_pr
         except FileNotFoundError:
             df_combined = df_new
 
+        # Sort and save
         df_combined['Date'] = pd.to_datetime(df_combined['Date'], errors='coerce')
         df_combined.sort_values(by=['ticker', 'Date'], inplace=True)
         df_combined.to_csv(filename, index=False)
