@@ -1,3 +1,5 @@
+
+# Folder: src/features/build_features.py
 import pandas as pd
 
 def combine_news_and_prices(
@@ -14,11 +16,15 @@ def combine_news_and_prices(
     df_news['date'] = df_news['publishedAt'].dt.date
     df_prices['date'] = df_prices['Date'].dt.date
 
-    # Merge using left join to retain all price records
-    df = pd.merge(df_prices, df_news, how='left', on=['ticker', 'date'])
+    # Aggregate sentiment per ticker/date
+    df_agg_news = df_news.groupby(['ticker', 'date']).agg({
+        'sentiment': 'mean',
+        'translated_text': 'count'
+    }).rename(columns={'translated_text': 'news_count'}).reset_index()
 
-    # Fill missing sentiment with 0 (neutral) or optionally keep NaN
+    df = pd.merge(df_prices, df_agg_news, how='left', on=['ticker', 'date'])
     df['sentiment'] = df['sentiment'].fillna(0)
+    df['news_count'] = df['news_count'].fillna(0)
 
     df.sort_values(by=['ticker', 'date'], inplace=True)
     df['next_close'] = df.groupby('ticker')['Close'].shift(-1)
