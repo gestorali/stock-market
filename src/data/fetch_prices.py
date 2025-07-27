@@ -3,7 +3,7 @@ import os
 import requests
 import pandas as pd
 from dotenv import load_dotenv
-from datetime import datetime
+# from datetime import datetime
 
 def fetch_and_save_stock_data(ticker, start, end, filename="data/prices/stock_prices.csv"):
     load_dotenv()

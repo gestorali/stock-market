@@ -1,4 +1,5 @@
 import matplotlib
+import seaborn as sns
 matplotlib.use('TkAgg')  # Use the Tkinter backend for interactive plots
 import matplotlib.pyplot as plt
 
@@ -29,4 +30,14 @@ def plot_stock_data(data, ticker):
     # Add title and grid
     plt.title(f"{ticker} Stock Data")
     plt.grid()
+    plt.show()
+    pass
+
+def plot_correlation_heatmap(data):
+    """
+    Plots a heatmap showing feature correlations.
+    """
+    plt.figure(figsize=(12, 8))
+    sns.heatmap(data.corr(), cmap="coolwarm", annot=True, fmt=".2f", linewidths=0.5)
+    plt.title("Feature Correlation Heatmap")
     plt.show()
