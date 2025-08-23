@@ -1,3 +1,5 @@
+#src/data/utils.py
+
 import pandas as pd
 import re
 from langdetect import detect, LangDetectException
@@ -11,9 +13,21 @@ def detect_language(text):
         return "undetected"
 
 def is_mostly_non_latin(text, threshold=0.3):
-    if not isinstance(text, str):
+    """
+    Returns True if text is mostly non-Latin characters,
+    BUT keeps CJK (Chinese/Japanese/Korean) since we can translate them.
+    """
+    if not isinstance(text, str) or not text.strip():
         return False
+
+    # Count non-Latin
     non_latin_chars = re.findall(r"[^\x00-\x7F]", text)
+
+    # If text is mostly Chinese/Japanese/Korean, allow it
+    if re.search(r"[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]", text):
+        return False  # keep CJK text
+
+    # Otherwise, treat as junk if non-Latin ratio is too high
     return len(non_latin_chars) / max(len(text), 1) > threshold
 
 def translate_text(text, target_lang="en"):

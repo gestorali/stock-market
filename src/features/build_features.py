@@ -1,5 +1,6 @@
-# Folder: src/features/build_features.py
+# src/features/build_features.py
 import pandas as pd
+from src.features.technical_indicators import add_technical_indicators
 
 def combine_news_and_prices(
     news_file="data/processed/news_translated_cleaned.csv",
@@ -21,10 +22,25 @@ def combine_news_and_prices(
         'translated_text': 'count'
     }).rename(columns={'translated_text': 'news_count'}).reset_index()
 
-    df = pd.merge(df_prices, df_agg_news, how='left', on=['ticker', 'date'])
+    # Split general vs company sentiment
+    df_general = df_agg_news[df_agg_news['ticker'] == "GENERAL"][['date', 'sentiment']].rename(columns={'sentiment': 'general_sentiment'})
+    df_company = df_agg_news[df_agg_news['ticker'] != "GENERAL"]
+
+    # Merge company sentiment to prices
+    df = pd.merge(df_prices, df_company, how='left', on=['ticker', 'date'])
+
+    # Merge general sentiment to all prices on same date
+    df = pd.merge(df, df_general, how='left', on='date')
+
+    # Fill NaNs
     df['sentiment'] = df['sentiment'].fillna(0)
     df['news_count'] = df['news_count'].fillna(0)
+    df['general_sentiment'] = df['general_sentiment'].fillna(0)
 
+    # Add technical indicators
+    df = add_technical_indicators(df)
+
+    # Target generation
     df.sort_values(by=['ticker', 'date'], inplace=True)
     df['next_close'] = df.groupby('ticker')['Close'].shift(-1)
     df['target'] = (df['next_close'] > df['Close']).astype(int)

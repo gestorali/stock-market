@@ -1,3 +1,5 @@
+#/home/michal/PycharmProjects/stock-market/src/models/train_model.py
+
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
@@ -6,6 +8,7 @@ import joblib
 import os
 import matplotlib.pyplot as plt
 from datetime import datetime
+import json
 
 # Optional: Use XGBoost if installed
 try:
@@ -33,7 +36,13 @@ def train_model(model_name="random_forest"):
         print("\n📊 Target class distribution in test data:")
         print(df_test["target"].value_counts())
 
-    feature_cols = ["Close", "sentiment", "MA25", "MA50", "MACD", "Middle Band"]
+    # Load feature columns from file
+    feature_cols_path = "models/feature_columns.json"
+    if not os.path.exists(feature_cols_path):
+        raise FileNotFoundError(f"Feature columns file '{feature_cols_path}' not found. Run scaling first.")
+    with open(feature_cols_path, "r") as f:
+        feature_cols = json.load(f)
+
     target_col = "target"
 
     X_train = df_train[feature_cols]

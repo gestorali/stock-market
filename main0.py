@@ -29,7 +29,7 @@ def main():
         if args.general_news:
             # General financial news
             fetch_and_save_news(
-                ticker=None,
+                ticker="GENERAL",
                 start_date=args.start_date,
                 end_date=args.end_date,
                 query="stock market OR economy OR inflation OR interest rates",
@@ -54,7 +54,7 @@ def main():
     elif args.mode == "all":
         fetch_and_save_news(args.ticker, args.start_date, args.end_date)
         fetch_and_save_news(
-            ticker=None,
+            ticker="GENERAL",
             start_date=args.start_date,
             end_date=args.end_date,
             query="stock market OR economy OR inflation OR interest rates",

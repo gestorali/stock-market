@@ -1,33 +1,44 @@
-#technical_indicators
+#/home/michal/PycharmProjects/stock-market/src/features/technical_indicators.py
 
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 import joblib
 import os
-
+import json
 
 scaler_default_path = "models/price_scaler.pkl"
 
 def add_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Adds MA25, MA50, MACD, and Bollinger Bands to the DataFrame.
+    Adds common technical indicators without using TA-Lib.
+    Works directly on a DataFrame with columns: Open, High, Low, Close, Volume.
     """
+
     df = df.copy()
+
+    # Moving Averages
     df["MA25"] = df["Close"].rolling(window=25).mean()
     df["MA50"] = df["Close"].rolling(window=50).mean()
 
-    # MACD
-    ema_12 = df["Close"].ewm(span=12, adjust=False).mean()
-    ema_26 = df["Close"].ewm(span=26, adjust=False).mean()
-    df["MACD"] = ema_12 - ema_26
-
     # Bollinger Bands
-    ma20 = df["Close"].rolling(window=20).mean()
-    std20 = df["Close"].rolling(window=20).std()
-    df["Middle Band"] = ma20
-    df["Upper Band"] = ma20 + (2 * std20)
-    df["Lower Band"] = ma20 - (2 * std20)
+    rolling_mean = df["Close"].rolling(window=20).mean()
+    rolling_std = df["Close"].rolling(window=20).std()
+    df["BB_upper"] = rolling_mean + (rolling_std * 2)
+    df["BB_lower"] = rolling_mean - (rolling_std * 2)
+
+    # MACD (12 EMA - 26 EMA)
+    ema12 = df["Close"].ewm(span=12, adjust=False).mean()
+    ema26 = df["Close"].ewm(span=26, adjust=False).mean()
+    df["MACD"] = ema12 - ema26
+    df["MACD_signal"] = df["MACD"].ewm(span=9, adjust=False).mean()
+
+    # RSI
+    delta = df["Close"].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+    rs = gain / loss
+    df["RSI"] = 100 - (100 / (1 + rs))
 
     return df
 
@@ -87,7 +98,17 @@ def run_scaling_pipeline():
     df = pd.read_csv("data/features/combined.csv")
     df = add_technical_indicators(df)
 
-    feature_cols = ["Close", "sentiment", "MA25", "MA50", "MACD", "Middle Band"]
+    feature_cols = [
+        "sentiment", "news_count", "general_sentiment",
+        "MA25", "MA50", "MACD", "MACD_signal",
+        "BB_upper", "BB_lower", "RSI"
+    ]
+
+    # Save feature columns to file so training can load them
+    with open("models/feature_columns.json", "w") as f:
+        json.dump(feature_cols, f)
+    print(f"✅ Feature columns saved to 'models/feature_columns.json'")
+
     df = df.dropna(subset=feature_cols)
 
     split_idx = int(len(df) * 0.8)

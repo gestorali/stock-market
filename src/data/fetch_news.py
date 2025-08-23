@@ -6,7 +6,7 @@ import requests
 from dotenv import load_dotenv
 from src.data.utils import save_to_csv
 
-def fetch_and_save_news(query, start_date, end_date, raw_file="data/raw/news_original_language.csv", news_type="company"):
+def fetch_and_save_news(query, start_date, end_date, raw_file="data/raw/news_original_language.csv", news_type="company", ticker=None):
     load_dotenv()
     api_key = os.getenv("GNEWS_API_KEY")
     if not api_key:
@@ -35,6 +35,7 @@ def fetch_and_save_news(query, start_date, end_date, raw_file="data/raw/news_ori
                 article["query"] = query
                 article["type"] = news_type
                 article["fetch_date"] = pd.Timestamp.now().date()
+                article["ticker"] = ticker if ticker else query  # <-- NEW
                 all_articles.append(article)
         except Exception as e:
             print(f"❌ Fetch error for {query}: {e}")
