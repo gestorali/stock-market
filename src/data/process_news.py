@@ -7,6 +7,7 @@ from src.data.utils import (
     is_mostly_non_latin,
     translate_text,
     analyze_sentiment,
+    normalize_language_code,   # <-- import nowej funkcji
 )
 
 def extract_source_name(x):
@@ -15,20 +16,6 @@ def extract_source_name(x):
     except Exception:
         return None
 
-
-def normalize_lang_code(code: str) -> str:
-    """Normalize language code to match supported translator codes."""
-    if not code:
-        return code
-
-    mapping = {
-        "zh-cn": "zh-CN",
-        "zh-tw": "zh-TW",
-        "jp": "ja",   # czasem detektor języka zwraca 'jp' zamiast 'ja'
-        "kr": "ko",   # analogicznie dla koreańskiego
-    }
-    code = code.lower()
-    return mapping.get(code, code)
 
 def process_and_save_translated_news(
     raw_file="data/raw/news_original_language.csv",
@@ -50,8 +37,11 @@ def process_and_save_translated_news(
         + df["content"].astype(str)
     ).str.strip()
 
-    # 🧹 Detect language and filter out blacklisted or junk
+    # 🧹 Detect language
     df["detected_lang"] = df["original_text"].apply(detect_language)
+
+    # 🔄 Normalize language codes
+    df["detected_lang"] = df["detected_lang"].apply(normalize_language_code)
 
     # Blacklist filter
     mask_lang = df["detected_lang"].isin(lang_blacklist)

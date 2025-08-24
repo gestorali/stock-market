@@ -11,6 +11,8 @@ LANGUAGE_CODE_MAP = {
     "zh-cn": "zh-CN",  # Chinese simplified
     "zh-tw": "zh-TW",  # Chinese traditional
     "pt-br": "pt",     # Brazilian Portuguese → ogólny portugalski
+    "jp": "ja",        # czasem detektor języka zwraca 'jp' zamiast 'ja'
+    "kr": "ko",        # analogicznie dla koreańskiego
     # możesz dopisać inne, jeśli wyjdą w testach
 }
 
