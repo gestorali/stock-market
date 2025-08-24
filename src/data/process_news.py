@@ -10,6 +10,19 @@ def extract_source_name(x):
     except:
         return None
 
+
+def normalize_lang_code(code: str) -> str:
+    """Normalize language code to match supported translator codes."""
+    if not code:
+        return code
+
+    mapping = {
+        "zh-cn": "zh-CN",
+        "zh-tw": "zh-TW"
+    }
+    code = code.lower()
+    return mapping.get(code, code)
+
 def process_and_save_translated_news(
     raw_file="data/raw/news_original_language.csv",
     clean_file="data/processed/news_translated_cleaned.csv",
