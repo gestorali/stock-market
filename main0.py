@@ -7,6 +7,7 @@ from src.features.build_features import combine_news_and_prices
 from src.features.technical_indicators import run_scaling_pipeline
 from src.models.train_model import train_model
 
+
 def main():
     parser = argparse.ArgumentParser(description="News & Stock ML Pipeline")
     parser.add_argument("--mode", type=str, required=True,
@@ -66,5 +67,9 @@ def main():
         run_scaling_pipeline()
         train_model()
 
+
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n🛑 Program przerwany przez użytkownika.")
