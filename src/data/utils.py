@@ -1,4 +1,4 @@
-#src/data/utils.py
+# src/data/utils.py
 
 import pandas as pd
 import re
@@ -6,9 +6,27 @@ from langdetect import detect, LangDetectException
 from deep_translator import GoogleTranslator
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 
+# Mapowanie nietypowych kodów językowych na poprawne
+LANGUAGE_CODE_MAP = {
+    "zh-cn": "zh-CN",  # Chinese simplified
+    "zh-tw": "zh-TW",  # Chinese traditional
+    "pt-br": "pt",     # Brazilian Portuguese → ogólny portugalski
+    # możesz dopisać inne, jeśli wyjdą w testach
+}
+
+def normalize_language_code(lang_code: str) -> str:
+    """Mapuje kody językowe na takie, które rozumie GoogleTranslator."""
+    if not isinstance(lang_code, str):
+        return "unknown"
+    return LANGUAGE_CODE_MAP.get(lang_code.lower(), lang_code)
+
 def detect_language(text):
+    """Detekcja języka z normalizacją kodu."""
     try:
-        return detect(text.strip()) if isinstance(text, str) and text.strip() else "unknown"
+        if isinstance(text, str) and text.strip():
+            detected = detect(text.strip())
+            return normalize_language_code(detected)
+        return "unknown"
     except LangDetectException:
         return "undetected"
 
@@ -31,13 +49,14 @@ def is_mostly_non_latin(text, threshold=0.3):
     return len(non_latin_chars) / max(len(text), 1) > threshold
 
 def translate_text(text, target_lang="en"):
+    """Tłumaczy tekst na target_lang, uwzględniając normalizację kodu języka."""
     try:
-        detected_lang = detect(text)
+        detected_lang = detect_language(text)
         if detected_lang.lower() == target_lang:
             return text
         return GoogleTranslator(source=detected_lang, target=target_lang).translate(text)
     except Exception as e:
-        print(f"⚠️ Translation error: {e}")
+        print(f"⚠️ Translation error ({detected_lang}): {e}")
         return text
 
 def analyze_sentiment(text):
