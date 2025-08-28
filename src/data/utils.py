@@ -50,15 +50,36 @@ def is_mostly_non_latin(text, threshold=0.3):
     # Otherwise, treat as junk if non-Latin ratio is too high
     return len(non_latin_chars) / max(len(text), 1) > threshold
 
-def translate_text(text, target_lang="en"):
-    """Tłumaczy tekst na target_lang, uwzględniając normalizację kodu języka."""
+def translate_text(text, target_lang="en", chunk_size=500):
+    """
+    Tłumaczy tekst na target_lang, dzieląc go na kawałki,
+    aby uniknąć błędów przy zbyt długim tekście.
+    """
+    if not isinstance(text, str) or not text.strip():
+        return text
+
     try:
         detected_lang = detect_language(text)
         if detected_lang.lower() == target_lang:
-            return text
-        return GoogleTranslator(source=detected_lang, target=target_lang).translate(text)
+            return text  # już w odpowiednim języku
+
+        translator = GoogleTranslator(source=detected_lang, target=target_lang)
+
+        # Podział na kawałki
+        chunks = [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
+
+        translated_chunks = []
+        for chunk in chunks:
+            try:
+                translated_chunks.append(translator.translate(chunk))
+            except Exception as e:
+                print(f"⚠️ Translation chunk error ({detected_lang}): {e}")
+                translated_chunks.append(chunk)  # fallback – zostawiamy oryginał
+
+        return " ".join(translated_chunks)
+
     except Exception as e:
-        print(f"⚠️ Translation error ({detected_lang}): {e}")
+        print(f"⚠️ Translation error: {e}")
         return text
 
 def analyze_sentiment(text):
