@@ -2,9 +2,13 @@
 
 import pandas as pd
 import re
+import time
+import random
 from langdetect import detect, LangDetectException
 from googletrans import Translator  # ✅ używamy googletrans-py
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
+
+translator = Translator()
 
 # Mapowanie nietypowych kodów językowych na poprawne
 LANGUAGE_CODE_MAP = {
@@ -48,40 +52,42 @@ def is_mostly_non_latin(text, threshold=0.3):
 
     return len(non_latin_chars) / max(len(text), 1) > threshold
 
-def translate_text(text, target_lang="en", chunk_size=4000):
+def chunk_text(text, chunk_size=1000):
+    """Split text into smaller chunks."""
+    return [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
+
+def safe_translate_chunk(chunk, src_lang="auto", dest_lang="en", retries=3, base_delay=2):
     """
-    Tłumaczy tekst na target_lang, normalizując kod języka
-    i dzieląc długie teksty na kawałki (dla googletrans-py).
+    Translate a text chunk with retries in case of timeout or network error.
     """
-    if not isinstance(text, str) or not text.strip():
+    for attempt in range(retries):
+        try:
+            return translator.translate(chunk, src=src_lang, dest=dest_lang).text
+        except Exception as e:
+            print(f"⚠️ Translation error (attempt {attempt+1}/{retries}): {e}")
+            sleep_time = base_delay * (2 ** attempt) + random.random()
+            time.sleep(sleep_time)
+    print("❌ Failed to translate chunk after retries, returning original.")
+    return chunk  # fallback: return untranslated chunk
+
+def translate_text(text, src_lang="auto", dest_lang="en"):
+    """
+    Translate text safely in chunks with retries.
+    """
+    if not text or not isinstance(text, str):
         return text
 
     try:
-        detected_lang = detect_language(text)
-        detected_lang = normalize_language_code(detected_lang)
-
-        if detected_lang.lower() == target_lang.lower():
-            return text  # już w odpowiednim języku
-
-        translator = Translator()
-
-        # Podział na kawałki (max ~5000 znaków dla API Google)
-        chunks = [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
-
         translated_chunks = []
-        for chunk in chunks:
-            try:
-                result = translator.translate(chunk, src=detected_lang, dest=target_lang)
-                translated_chunks.append(result.text)
-            except Exception as e:
-                print(f"⚠️ Translation chunk error ({detected_lang}): {e}")
-                translated_chunks.append(chunk)  # fallback – zostawiamy oryginał
+        for chunk in chunk_text(text, chunk_size=1000):
+            translated = safe_translate_chunk(chunk, src_lang, dest_lang)
+            translated_chunks.append(translated)
 
         return " ".join(translated_chunks)
 
     except Exception as e:
         print(f"⚠️ Translation error: {e}")
-        return text
+        return text  # ultimate fallback: return original text
 
 def analyze_sentiment(text):
     analyzer = SentimentIntensityAnalyzer()
