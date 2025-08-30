@@ -5,10 +5,8 @@ import re
 import time
 import random
 from langdetect import detect, LangDetectException
-from googletrans import Translator  # ✅ używamy googletrans-py
+from deep_translator import GoogleTranslator  # ✅ zamiast googletrans
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
-
-translator = Translator()
 
 # Mapowanie nietypowych kodów językowych na poprawne
 LANGUAGE_CODE_MAP = {
@@ -21,7 +19,7 @@ LANGUAGE_CODE_MAP = {
 }
 
 def normalize_language_code(lang_code: str) -> str:
-    """Mapuje kody językowe na takie, które rozumie Translator."""
+    """Mapuje kody językowe na takie, które rozumie translator."""
     if not isinstance(lang_code, str):
         return "unknown"
     return LANGUAGE_CODE_MAP.get(lang_code.lower(), lang_code)
@@ -53,7 +51,7 @@ def is_mostly_non_latin(text, threshold=0.3):
     return len(non_latin_chars) / max(len(text), 1) > threshold
 
 def chunk_text(text, chunk_size=1000):
-    """Split text into smaller chunks."""
+    """Split text into smaller chunks (Google limit ≈5000 chars)."""
     return [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
 
 def safe_translate_chunk(chunk, src_lang="auto", dest_lang="en", retries=3, base_delay=2):
@@ -62,7 +60,7 @@ def safe_translate_chunk(chunk, src_lang="auto", dest_lang="en", retries=3, base
     """
     for attempt in range(retries):
         try:
-            return translator.translate(chunk, src=src_lang, dest=dest_lang).text
+            return GoogleTranslator(source=src_lang, target=dest_lang).translate(chunk)
         except Exception as e:
             print(f"⚠️ Translation error (attempt {attempt+1}/{retries}): {e}")
             sleep_time = base_delay * (2 ** attempt) + random.random()
