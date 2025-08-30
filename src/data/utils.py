@@ -3,7 +3,7 @@
 import pandas as pd
 import re
 from langdetect import detect, LangDetectException
-from deep_translator import GoogleTranslator
+from googletrans import Translator  # ✅ używamy googletrans-py
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 
 # Mapowanie nietypowych kodów językowych na poprawne
@@ -17,7 +17,7 @@ LANGUAGE_CODE_MAP = {
 }
 
 def normalize_language_code(lang_code: str) -> str:
-    """Mapuje kody językowe na takie, które rozumie GoogleTranslator."""
+    """Mapuje kody językowe na takie, które rozumie Translator."""
     if not isinstance(lang_code, str):
         return "unknown"
     return LANGUAGE_CODE_MAP.get(lang_code.lower(), lang_code)
@@ -40,40 +40,39 @@ def is_mostly_non_latin(text, threshold=0.3):
     if not isinstance(text, str) or not text.strip():
         return False
 
-    # Count non-Latin
     non_latin_chars = re.findall(r"[^\x00-\x7F]", text)
 
-    # If text is mostly Chinese/Japanese/Korean, allow it
+    # Jeśli zawiera chińskie/japońskie/koreańskie, zostawiamy
     if re.search(r"[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]", text):
-        return False  # keep CJK text
+        return False
 
-    # Otherwise, treat as junk if non-Latin ratio is too high
     return len(non_latin_chars) / max(len(text), 1) > threshold
 
 def translate_text(text, target_lang="en", chunk_size=4000):
     """
     Tłumaczy tekst na target_lang, normalizując kod języka
-    i dzieląc długie teksty na kawałki.
+    i dzieląc długie teksty na kawałki (dla googletrans-py).
     """
     if not isinstance(text, str) or not text.strip():
         return text
 
     try:
         detected_lang = detect_language(text)
-        detected_lang = normalize_language_code(detected_lang)  # 🔹 normalizacja kodu
+        detected_lang = normalize_language_code(detected_lang)
 
         if detected_lang.lower() == target_lang.lower():
             return text  # już w odpowiednim języku
 
-        translator = GoogleTranslator(source=detected_lang, target=target_lang)
+        translator = Translator()
 
-        # Podział na kawałki
+        # Podział na kawałki (max ~5000 znaków dla API Google)
         chunks = [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
 
         translated_chunks = []
         for chunk in chunks:
             try:
-                translated_chunks.append(translator.translate(chunk))
+                result = translator.translate(chunk, src=detected_lang, dest=target_lang)
+                translated_chunks.append(result.text)
             except Exception as e:
                 print(f"⚠️ Translation chunk error ({detected_lang}): {e}")
                 translated_chunks.append(chunk)  # fallback – zostawiamy oryginał
