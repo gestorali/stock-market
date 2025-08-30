@@ -50,17 +50,19 @@ def is_mostly_non_latin(text, threshold=0.3):
     # Otherwise, treat as junk if non-Latin ratio is too high
     return len(non_latin_chars) / max(len(text), 1) > threshold
 
-def translate_text(text, target_lang="en", chunk_size=500):
+def translate_text(text, target_lang="en", chunk_size=4000):
     """
-    Tłumaczy tekst na target_lang, dzieląc go na kawałki,
-    aby uniknąć błędów przy zbyt długim tekście.
+    Tłumaczy tekst na target_lang, normalizując kod języka
+    i dzieląc długie teksty na kawałki.
     """
     if not isinstance(text, str) or not text.strip():
         return text
 
     try:
         detected_lang = detect_language(text)
-        if detected_lang.lower() == target_lang:
+        detected_lang = normalize_language_code(detected_lang)  # 🔹 normalizacja kodu
+
+        if detected_lang.lower() == target_lang.lower():
             return text  # już w odpowiednim języku
 
         translator = GoogleTranslator(source=detected_lang, target=target_lang)
