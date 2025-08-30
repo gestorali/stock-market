@@ -5,7 +5,7 @@ import re
 import time
 import random
 from langdetect import detect, LangDetectException
-from deep_translator import GoogleTranslator  # ✅ zamiast googletrans
+from deep_translator import GoogleTranslator, MyMemoryTranslator
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 
 # Mapowanie nietypowych kodów językowych na poprawne
@@ -50,7 +50,7 @@ def is_mostly_non_latin(text, threshold=0.3):
 
     return len(non_latin_chars) / max(len(text), 1) > threshold
 
-def chunk_text(text, chunk_size=1000):
+def chunk_text(text, chunk_size=3000):
     """Split text into smaller chunks (Google limit ≈5000 chars)."""
     return [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
 
@@ -65,8 +65,13 @@ def safe_translate_chunk(chunk, src_lang="auto", dest_lang="en", retries=3, base
             print(f"⚠️ Translation error (attempt {attempt+1}/{retries}): {e}")
             sleep_time = base_delay * (2 ** attempt) + random.random()
             time.sleep(sleep_time)
-    print("❌ Failed to translate chunk after retries, returning original.")
-    return chunk  # fallback: return untranslated chunk
+        # fallback: try MyMemory
+        try:
+            print("🔄 Falling back to MyMemory translator...")
+            return MyMemoryTranslator(source=src_lang, target=dest_lang).translate(chunk)
+        except Exception as e:
+            print(f"❌ Fallback also failed: {e}")
+            return chunk  # fallback: return untranslated chunk
 
 def translate_text(text, src_lang="auto", dest_lang="en"):
     """
@@ -77,7 +82,7 @@ def translate_text(text, src_lang="auto", dest_lang="en"):
 
     try:
         translated_chunks = []
-        for chunk in chunk_text(text, chunk_size=1000):
+        for chunk in chunk_text(text, chunk_size=3000):
             translated = safe_translate_chunk(chunk, src_lang, dest_lang)
             translated_chunks.append(translated)
 
